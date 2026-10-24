@@ -14,10 +14,10 @@ The code was written to be run in a Kaggle or Jupyter notebook, where library im
 
 Ordering of scripts in a notebook is 
 
-    1. feature_extraction
-    
-    2. feature_selection
-    
-    3. k-NN_ML
-    
-    4. feature_distributions
+1. feature_extraction
+
+2. feature_selection
+
+3. k-NN_ML
+
+4. feature_distributions
