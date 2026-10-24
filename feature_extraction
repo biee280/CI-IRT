@@ -1,0 +1,501 @@
+import pandas
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+import matplotlib
+import statistics
+from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import make_splrep
+from scipy.integrate import quad
+from scipy.stats import kurtosis
+import warnings
+#warnings.simplefilter(action='ignore', category=FutureWarning)
+
+## GRAPHING / BABY ANALYSIS FUNCTIONS ##
+def heatmap(t_df, coord):
+    #CODE TO GENERATE HEAT MAP AT SPECIFIC TIMESTAMP
+    #pulling one set of temperatures for one timestamp (based on .iloc index)
+    temp2 = t_df.iloc[5]
+    #select only nodes where z == 0 (on the front face)
+    coord2 = coord[coord.z == 0]
+    #get only the node ids of coords on front face
+    node_ids = coord2.iloc[:, 0]
+    #print(node_ids)
+    temp2 = temp2[node_ids]
+    x = coord2.iloc[:, 1]
+    y = coord2.iloc[:, 2]
+    
+    x = np.array(x)
+    y = np.array(y)
+    temp2 = np.array(temp2)
+    
+    grid_x, grid_y = np.mgrid[-1:99:100j, -1:99:100j]
+    grid_z = griddata((x, y), temp2, (grid_x, grid_y), method='linear')
+    
+    plt.figure(figsize=(8, 6))
+    
+    heatmap = plt.imshow(grid_z.T, origin='upper', extent=(-1, 99, -1, 99))
+    
+    plt.colorbar(heatmap, label='Temperature (°C)')
+    
+    plt.xlabel('X-coordinate')
+    plt.ylabel('Y-coordinate')
+    plt.title('Surface Temperature Distribution Heatmap')
+    
+    plt.show()
+
+def quad_heatmap(t_df, coord):
+    #CREATES 4 HEATMAPS AT USEFUL TIMESTAMPS
+    #pulling one set of temperatures for one timestamp (based on .iloc index)
+    temp2 = t_df.iloc[5]
+    #select only nodes where z == 0 (on the front face)
+    coord2 = coord[coord.z == 0]
+    #get only the node ids of coords on front face
+    node_ids = coord2.iloc[:, 0]
+    #print(node_ids)
+    temp2 = temp2[node_ids]
+    x = coord2.iloc[:, 1]
+    y = coord2.iloc[:, 2]
+    
+    x = np.array(x)
+    y = np.array(y)
+    temp2 = np.array(temp2)
+    
+    temperature_1 = t_df.iloc[1]
+    temperature_1 = temperature_1[node_ids].to_numpy()
+    temperature_2 = t_df.iloc[3]
+    temperature_2 = temperature_2[node_ids].to_numpy()
+    temperature_3 = t_df.iloc[5]
+    temperature_3 = temperature_3[node_ids].to_numpy()
+    temperature_4 = t_df.iloc[7]
+    temperature_4 = temperature_4[node_ids].to_numpy()
+    
+    #create a uniform grid to plot the heatmap
+    grid_x, grid_y = np.mgrid[-1:99:100j, -1:99:100j]
+    
+    #griddata takes the scattered points and interpolates to the regular grid.
+    grid_z1 = griddata((x, y), temperature_1, (grid_x, grid_y), method='linear')
+    grid_z2 = griddata((x, y), temperature_2, (grid_x, grid_y), method='linear')
+    grid_z3 = griddata((x, y), temperature_3, (grid_x, grid_y), method='linear')
+    grid_z4 = griddata((x, y), temperature_4, (grid_x, grid_y), method='linear')
+    
+    #2x2 grid of subplots
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 6))
+    
+    temp3 = t_df.T
+    
+    #plot on each subplot
+    h1 = axes[0, 0].imshow(grid_z1.T, origin='upper', extent=(-1, 99, -1, 99))
+    axes[0, 0].set_title(f't={temp3.iloc[0][2]}')
+    plt.colorbar(h1, label='Temperature (°C)')
+    axes[0, 0].set_xlabel('X-coordinate')
+    axes[0, 0].set_ylabel('Y-coordinate')
+    
+    h2 = axes[0, 1].imshow(grid_z2.T, origin='upper', extent=(-1, 99, -1, 99))
+    axes[0, 1].set_title(f't={temp3.iloc[0][3]}')
+    plt.colorbar(h2, label='Temperature (°C)')
+    axes[0, 1].set_xlabel('X-coordinate')
+    axes[0, 1].set_ylabel('Y-coordinate')
+    
+    h3 = axes[1, 0].imshow(grid_z3.T, origin='upper', extent=(-1, 99, -1, 99))
+    axes[1, 0].set_title(f't={temp3.iloc[0][4]}')
+    plt.colorbar(h3, label='Temperature (°C)')
+    axes[1, 0].set_xlabel('X-coordinate')
+    axes[1, 0].set_ylabel('Y-coordinate')
+    
+    h4 = axes[1, 1].imshow(grid_z4.T, origin='upper', extent=(-1, 99, -1, 99))
+    axes[1, 1].set_title(f't={temp3.iloc[0][5]}')
+    plt.colorbar(h4, label='Temperature (°C)')
+    axes[1, 1].set_xlabel('X-coordinate')
+    axes[1, 1].set_ylabel('Y-coordinate')
+    
+    #layout for better spacing
+    plt.tight_layout()
+    
+    plt.show()
+
+def regular_vs_defect_temp(coord, t_df):
+    #GRAPHS TEMP VS TIME ABOVE DEFECT AND NOT NEAR DEFECT
+    coord4 = coord
+    r1, r2, r3, r4, d1 = get_nodes(coord4)
+                
+    r1 = random.choice(r1s)
+    r2 = random.choice(r2s)
+    r3 = random.choice(r3s)
+    r4 = random.choice(r4s)
+    d1 = random.choice(d1s)
+    
+    x = t_df['Time'].to_numpy()
+    y_d = t_df[str(int(d1))].to_numpy()
+    y_r_1 = t_df[str(int(r1))].to_numpy()
+    y_r_2 = t_df[str(int(r2))].to_numpy()
+    y_r_3 = t_df[str(int(r3))].to_numpy()
+    y_r_4 = t_df[str(int(r4))].to_numpy()
+    arrays_to_average = [y_r_1, y_r_2, y_r_3, y_r_4]
+    y_r = np.mean(arrays_to_average, axis=0)
+    
+    plt.plot(x, y_d, label="T_d")
+    plt.plot(x, y_r, label="T_r")
+    plt.plot(x, y_d, 'o', color="blue")
+    plt.plot(x, y_r, 'o', color="orange")
+    
+    plt.xlabel("Time (s)")
+    plt.ylabel("Temperature (°C)")
+    plt.title("Surface Temp vs Time, directly above defect")
+    plt.grid()
+    
+    plt.legend()
+    
+    plt.show()
+
+def max_graphing(y_r, y_d, x):
+    #TIME VS DIFFERENCE IN TEMP, IDENTIFY MAX DIFFERENCE TIMESTAMP
+    #read and reformat data
+    y = (y_r - y_d)
+    
+    max_x = max_temp_difference_time(x, y)
+    max_diff = max_temp_difference(y)
+    
+    plt.axvline(x=max_x, color='g', linestyle=':', label=f't*: {max_x:.2f}')
+    
+    plt.plot(x, y)
+    
+    plt.xlabel("Time (s)")
+    plt.ylabel("Difference in T")
+    plt.grid()
+    plt.legend()
+    
+    plt.show()
+
+def analysis_graphing(t_df, coord):
+    #GRAPHING AND ANALYSIS AT t*
+    t_df_6 = t_df.T
+    temp = []
+    
+    c_df_filtered = coord[(coord['y'] > 45) & (coord['z'] == 0) & (coord['y'] < 55)]
+    
+    reference = c_df_filtered[(c_df_filtered['x'] < 20) | (c_df_filtered['x'] > 80)]
+    r_x = reference['x'].to_numpy()
+    r_id = reference['Node ID'].to_numpy()
+    r_temp = []
+    
+    n_id = c_df_filtered['Node ID'].to_numpy()
+    x_6 = c_df_filtered['x'].to_numpy()
+    
+    for i in range(len(n_id)):
+        temp.append(t_df.loc[4, str(n_id[i])])
+    temp = np.array(temp)
+    
+    for i in range(len(r_id)):
+        r_temp.append(t_df.loc[4, str(r_id[i])])
+    r_temp = np.array(r_temp)
+    r_value = np.mean(r_temp)
+    
+    sorted_indices = np.argsort(x_6)
+    
+    x_6 = x_6[sorted_indices]
+    temp = temp[sorted_indices]
+
+    duplicates = []
+    for i in range(len(x_6)):
+        for w in range(i+1, len(x_6)):
+            if x_6[i] == x_6[w] and w not in duplicates:
+                duplicates.append(w)
+
+    x_unique = np.delete(x_6, duplicates)
+    avg_temps = np.delete(temp, duplicates)
+    
+    spl = make_splrep(x_unique, avg_temps, s=0.1)
+    x_new = np.linspace(-1, 99, 100)
+    temp_smoothed = spl(x_new)
+    
+    fwhm_1 = calculate_fwhm(x_new, temp_smoothed, r_value)
+    
+    plt.plot(x_6, temp)
+    plt.axvline(x=fwhm_1[1], color='g', linestyle=':')
+    plt.axvline(x=fwhm_1[2], color='g', linestyle=':')
+    plt.plot(x_new, temp_smoothed, color='red')
+    plt.axhline(y=r_value, color='orange', linestyle='--', linewidth=2)
+    plt.grid()
+    plt.xlabel("X-coordinate")
+    plt.ylabel("Temperature (°C) at 1.1")
+    plt.show()
+    print(f"FWHM: {fwhm_1[0]}")
+    
+    i1, d1_1, d2_1 = calculate_i_d(x_new, temp_smoothed, r_value, fwhm_1, spl)
+    print(i1)
+    print(d1_1)
+    print(d2_1)
+    
+    depth_1 = curve_depth(x_new, temp_smoothed, r_value)
+    print(depth_1)
+    
+    d_w_1 = d_w_ratio(x_new, temp_smoothed, r_value)
+    print(d_w_1)
+    
+    kurt_1 = calculate_kurtosis(x_new, temp_smoothed, r_value)
+    print(kurt_1)
+
+    ## INDIVIDUAL FEATURE EXTRACTION FUNCTIONS ##
+def max_temp_difference(y):
+    #Returns the maximum difference in temperature between above defect and not above defect
+    max_index = np.argmax(y)
+    return max_index
+
+def max_temp_difference_time(x, y):
+    #Returns timestep of max_temp_difference
+    max_index = max_temp_difference(y)
+    max_x = x[max_index]
+    return max_x
+
+def calculate_fwhm(x, y, baseline):
+    #returns the width at half max amplitude, as well as 2 x values of half max 
+    min_temp = np.nanmin(y)
+    min_idx = np.argmin(y)
+
+    half_depth_value = min_temp + ((baseline - min_temp) / 2.0)
+
+    left_indices = np.where(y[:min_idx] <= half_depth_value)[0]
+    
+    right_indices = np.where(y[min_idx:] <= half_depth_value)[0] + min_idx
+    
+    x_left = x[left_indices[0]]
+    x_right = x[right_indices[-1]]
+
+    fwhm = x_right - x_left
+    return fwhm, x_right, x_left
+
+def intersection(x, y, baseline):
+    #returns values where curve intersects with baseline
+    min_y = np.nanmin(y)
+    min_idx = np.argmin(y)
+
+    depth = curve_depth(x, y, baseline)
+    
+    x_left = []
+    tolerance_l = 0
+    while len(x_left) == 0:
+        left_intersection = np.where(y[:min_idx] <= (baseline-tolerance_l))[0]
+        
+        if x[left_intersection[0]] != -1:
+            x_left = x[left_intersection]
+            x_left = x_left[0]
+            break
+        elif len(left_intersection) > 1:
+            for i in range(len(left_intersection) - 1):
+                if abs(x[left_intersection[-i-2]]) - abs(x[left_intersection[-i-1]]) > 2:
+                    x_left.append(x[left_intersection[-i-1]])
+            if len(x_left) != 0:
+                x_left = x_left[0]
+                break
+            else:
+                tolerance_l += depth/25
+        else:
+            tolerance_l += depth/25
+
+    x_right = []
+    tolerance_r = 0
+    while len(x_right) == 0:
+        right_intersection = np.where(y[min_idx:] <= (baseline-tolerance_r))[0] + min_idx
+    
+        if x[right_intersection[-1]] != 99:
+            x_right = x[right_intersection]
+            x_right = x_right[-1]
+            break
+        elif len(right_intersection) > 1:
+            for i in range(len(right_intersection) - 1):
+                if abs(x[right_intersection[i+1]]) - abs(x[right_intersection[i]]) > 2:
+                    x_right.append(x[right_intersection[i]])
+            if len(x_right) != 0:
+                x_right = x_right[0]
+                break
+            else:
+                tolerance_r += depth/25
+        else:
+            tolerance_r += depth/25
+
+    return x_left, x_right
+
+def curve_depth(x, y, baseline):
+    #returns depth of curve from baseline to minimum 
+    min_y = np.nanmin(y)
+    depth = baseline - min_y
+    return depth
+
+def d_w_ratio(x, y, baseline):
+    #returns ratio of depth and width @ half max amplitude
+    fwhm = calculate_fwhm(x, y, baseline)
+    w = fwhm[0]
+    d = curve_depth(x, y, baseline)
+    ratio = d/w
+    return ratio
+    
+def calculate_i_d(x, y, baseline, fwhm, spl):
+    #returns integral between curve and baseline and derivative at start and end of curve 
+    def integrand(z):
+        return abs(baseline-spl(z))
+
+    p_start, p_end = intersection(x, y, baseline)
+    integrand = lambda z: abs(baseline - spl(z))
+    result_1, error_1 = quad(integrand, p_start, fwhm[2]/2, limit=200)
+    result_2, error_2 = quad(integrand, fwhm[2]/2, fwhm[2], limit=200)
+    result_3, error_3 = quad(integrand, fwhm[2], fwhm[1], limit=500)
+    result_4, error_4 = quad(integrand, fwhm[1], p_end, limit=200)
+    total_integral = result_1 + result_2 + result_3 + result_4
+
+    deriv_func = spl.derivative()
+    slope_start = deriv_func(p_start)
+    slope_end = deriv_func(p_end)
+    
+    return total_integral, slope_start, slope_end
+
+def calculate_kurtosis(x, y, baseline):
+    #returns kurtosis of trough
+    limit = intersection(x, y, baseline)
+    trough_mask = (x >= limit[0]) & (x <= limit[1])
+    trough_data = y[trough_mask]
+    k = kurtosis(trough_data, fisher=True)
+    return k
+
+def get_nodes(coord4):
+    r1s = []
+    r2s = []
+    r3s = []
+    r4s = []
+    d1s = []
+    
+    for i in range(len(coord4)):
+        if coord4.iloc[i][-1] == 0:
+            if 5 < coord4.iloc[i][1] < 15:
+                if 5 < coord4.iloc[i][2] < 15:
+                    r1s.append(coord4.iloc[i][0])
+                elif 85 < coord4.iloc[i][2] < 95:
+                    r4s.append(coord4.iloc[i][0])
+            elif 85 < coord4.iloc[i][1] < 95:
+                if 5 < coord4.iloc[i][2] < 15:
+                    r2s.append(coord4.iloc[i][0])
+                elif 85 < coord4.iloc[i][2] < 95:
+                    r3s.append(coord4.iloc[i][0])
+            elif 48 < coord4.iloc[i][1] < 52:
+                if 48 < coord4.iloc[i][2] < 52:
+                    d1s.append(coord4.iloc[i][0])
+                
+    r1 = random.choice(r1s)
+    r2 = random.choice(r2s)
+    r3 = random.choice(r3s)
+    r4 = random.choice(r4s)
+    d1 = random.choice(d1s)
+
+    return r1, r2, r3, r4, d1
+
+def features(t_df, c_df):
+    ### Takes in datasets and returns a list of all features ###
+    ref_1, ref_2, ref_3, ref_4, def_node = get_nodes(c_df)
+
+    x = t_df['Time'].to_numpy()
+    temp_def = t_df[str(int(def_node))].to_numpy()
+    y_r_1 = t_df[str(int(ref_1))].to_numpy()
+    y_r_2 = t_df[str(int(ref_2))].to_numpy()
+    y_r_3 = t_df[str(int(ref_3))].to_numpy()
+    y_r_4 = t_df[str(int(ref_4))].to_numpy()
+    arrays_to_average = [y_r_1, y_r_2, y_r_3, y_r_4]
+    temp_ref_ave = np.mean(arrays_to_average, axis=0)
+    
+    #MAX DIFFERENCE & MAX DIFFERENCE TIMESTAMP
+    temp_delta = (temp_ref_ave - temp_def)
+    
+    max_x = max_temp_difference_time(x, temp_delta)
+    
+    #common code for both t* and 2t*
+    t_df_6 = t_df.T
+    
+    c_df_filtered = coord[(coord['y'] > 45) & (coord['z'] == 0) & (coord['y'] < 55)]
+    
+    reference = c_df_filtered[(c_df_filtered['x'] < 20) | (c_df_filtered['x'] > 80)]
+    r_x = reference['x'].to_numpy()
+    r_id = reference['Node ID'].to_numpy()
+    
+    n_id = c_df_filtered['Node ID'].to_numpy()
+
+    results = []
+    
+    for t_step in [4, 9]:
+        x_coords = c_df_filtered['x'].to_numpy()
+        raw_temps = []
+        r_temp = []
+        r_value = None
+        for i in range(len(n_id)):
+            raw_temps.append(t_df.loc[t_step, str(n_id[i])])
+        raw_temps = np.array(raw_temps)
+        
+        for i in range(len(r_id)):
+            r_temp.append(t_df.loc[t_step, str(r_id[i])])
+        r_temp = np.array(r_temp)
+        r_value = np.mean(r_temp)
+        
+        sorted_indices = np.argsort(x_coords)
+        
+        x_coords = x_coords[sorted_indices]
+        raw_temps = raw_temps[sorted_indices]
+        
+        duplicates = []
+        for i in range(len(x_coords)):
+            for w in range(i+1, len(x_coords)):
+                if x_coords[i] == x_coords[w] and w not in duplicates:
+                    duplicates.append(w)
+    
+        x_unique = np.delete(x_coords, duplicates)
+        avg_temps = np.delete(raw_temps, duplicates)
+        
+        spl = UnivariateSpline(x_unique, avg_temps, s=0.22)
+        x_new = np.linspace(-1, 99, 100)
+        temp_smoothed = spl(x_new)
+        
+        fwhm = calculate_fwhm(x_new, temp_smoothed, r_value)
+
+        #plt.plot(x_coords, raw_temps)
+        #plt.axvline(x=fwhm[1], color='g', linestyle=':')
+        #plt.axvline(x=fwhm[2], color='g', linestyle=':')
+        #plt.plot(x_new, temp_smoothed, color='red')
+        #plt.axhline(y=r_value, color='orange', linestyle='--', linewidth=2)
+        #plt.grid()
+        #plt.xlabel("X-coordinate")
+        #plt.ylabel("Temperature (°C)")
+        #plt.show()
+        
+        integral, slope_start, slope_end = calculate_i_d(x_new, temp_smoothed, r_value, fwhm, spl)
+        
+        depth = curve_depth(x_new, temp_smoothed, r_value)
+        
+        d_w = d_w_ratio(x_new, temp_smoothed, r_value)
+        
+        kurt = calculate_kurtosis(x_new, temp_smoothed, r_value)
+
+        results.append(fwhm[0])
+        results.append(integral)
+        results.append(slope_start)
+        results.append(slope_end)
+        results.append(depth)
+        results.append(d_w)
+        results.append(kurt)
+
+    return results
+
+def to_df(results, out_df, cols):
+    ### Takes in list of features, output dataframe and list of columns ###
+    ### Returns output dataframe with one additional row ###
+    new_row = pandas.DataFrame([results], columns=cols)
+    out_df = pandas.concat([out_df, new_row], ignore_index=True)
+    return out_df
+
+#defining columns for each feature
+cols = ['FWHM @ t1', 'Intg @ t1', 'Slope_start @ t1', 'Slope_end @ t1', 'Depth @ t1', 'Depth/width @ t1', 'Kurtosis @ t1',]
+
+out_df = pandas.DataFrame(columns=cols)
+for index in range(1, 501):
+    t_df = pandas.read_csv(f'PATH_TO_TEMPERATURE_DATA.csv') #includes number for ease of looping through
+    coord = pandas.read_csv(f'PATH_TO_NODE_COORDINATE_DATA.csv') #includes number for ease of looping through
+    feature_list = features(t_df, coord)
+    out_df = to_df(feature_list, out_df, cols)
+    if index % 50 == 0:
+        print(f"row added for {index}")
