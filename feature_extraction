@@ -1,3 +1,7 @@
+#imports key libraries and functions
+#extract all features from FEA output data files
+#includes functions for producing graphs of the features
+
 import pandas
 import matplotlib.pyplot as plt
 import numpy as np
