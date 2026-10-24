@@ -12,7 +12,7 @@ Created for organization and storage, so files will not run properly on their ow
 
 The code was written to be run in a Kaggle or Jupyter notebook, where library imports and variable definitions remain from cell to cell.
 
-Ordering of scripts in a notebook is 
+Ordering of scripts in a notebook is:
 
 1. feature_extraction
 
