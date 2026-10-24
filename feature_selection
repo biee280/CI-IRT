@@ -1,3 +1,5 @@
+#creates correlation table to compare correlation between features and outputs, for choosing features
+
 #appends sample parameters to output dataset for machine learning model training
 parameters = pandas.read_csv(f'PATH_TO_SAMPLE_PARAMETER_DATA.csv', header=None)
 out_df['Defect Radius'] = parameters[1]
