@@ -2,7 +2,7 @@
 
 Analysis of a Cold-Induced Infrared Thermography Non-Destructive Testing Methodology for Defect Dimension Determination, Utilizing Finite Element Analysis and Machine Learning
 
-The project compared surrogate models of cold-induced IRT and heat-induced IRT using CalculiX FEA software and a k-nearest neighbours machine learning model, which suggested experimental viability of sublimating dry ice as a stimulus.
+The project compared surrogate models of cold-induced IRT and heat-induced IRT using CalculiX FEA software (https://www.dhondt.de/) and a k-nearest neighbours machine learning model, which suggested experimental viability of sublimating dry ice as a stimulus.
 
 This repo includes the code used to extract features from outputs from CalculiX. 
 
