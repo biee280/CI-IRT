@@ -1,4 +1,4 @@
-#creating histograms showing feature distribution, both raw and scaled
+#creating histograms showing feature distribution, both raw and scaled using RobustScaler from sklearn
 
 from sklearn import preprocessing
 
