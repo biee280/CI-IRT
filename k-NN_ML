@@ -2,8 +2,8 @@ from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 from sklearn.neighbors import KNeighborsRegressor
 
-out_df_h = pandas.read_csv('/kaggle/input/thermo-data/out.csv')
-out_df_c = pandas.read_csv('/kaggle/input/thermo-data/labelled_data.csv')
+out_df_h = pandas.read_csv('PATH_TO_OUTPUT_FILE.csv')
+out_df_c = pandas.read_csv('PATH_TO_DATA_WITH_SAMPLE_LABELS.csv')
 
 features = ['Intg @ t1', 'Depth @ t1', 'Depth/width @ t1']
 outputs = ['Defect Radius', 'Defect Height', 'Defect Depth']
